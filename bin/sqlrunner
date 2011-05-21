@@ -1,0 +1,78 @@
+#!ruby
+#$:.unshift '../lib' #<< '../lib'
+
+require 'rubygems'
+require 'notes_mailer'
+require 'sqlrunner'
+require 'optparse'
+
+
+conf = {}
+opts = OptionParser.new do |opts|
+  
+  opts.banner = "Usage: sqlrunner <command> <opts> "
+  opts.separator ""
+  opts.separator "Commands: run"
+  opts.separator ""
+  opts.separator "Specific options:"
+
+  opts.on("-D", "--db-name DATABASE", "ODBC database name ")  do |para| conf[:db_name] = para end
+  opts.on("-U", "--db-user USERNAME", "DB user name") { |para| conf[:db_user]= para  }
+  opts.on("-P", "--db-password PASSWORD", "DB password")  { |para| conf[:db_password] = para  }
+  opts.on("-S", "--path PATH_TO_SQL_FILES", "Path to SQL-statements") { |para| conf[:path_to_sql_files] = para }
+
+  opts.on("-m", "--mail-to E-MAIL", "Send result to e-mail adress") { |para| conf[:mail_to]= para  }
+
+  opts.on("-u", "--notes-username USERNAME", "Lotus Notes user name") { |para| conf[:notes_user]=para }
+  opts.on("-p", "--notes-password PASSWORD", "Lotus Notes password")  { |para| conf[:notes_password]= para  }
+  opts.on("-d", "--notes-database DATABASE", "Lotus Notes database (.nsf file)")  { |para| conf[:notes_db]= para  }
+  opts.on("-s", "--notes-server SERVER", "Lotus Notes Server")  { |para| conf[:notes_server]= para  }
+
+  opts.on("--dry-run", "Do not Execute SQL statements")  { |para| conf[:dry_run] =para }
+  
+  opts.on("--mock-win32ole", "")  { |para| conf[:mock_win32ole]= para  }
+  opts.on("--verbose", "")  { |para| conf[:verbose]= para  }
+
+  opts.separator ""
+  opts.separator "Example:" 
+  opts.separator "    sqlrunner run -D GN3T -U sds -P first -m max.mayer@test.com -u user123 -p secret123 -d mail123.nsf "
+  opts.separator ""
+  opts.separator "Common options:"
+    
+  # No argument, shows at tail.  This will print an options summary.
+  opts.on_tail("-?", "--help", "Show this message") do
+     puts opts
+     exit
+  end
+  
+  opts.on_tail("-v", "--version", "Show version") do
+    puts "sqlrunner 0.0.1"
+    exit
+  end
+  
+  opts.on_tail "\n(c) 2011 Elias Kugler"    
+  
+end
+
+opts.parse! ARGV
+
+if defined?Ocra
+  exit
+else
+  if ARGV.length != 1
+    puts opts
+    exit
+  end
+  conf[:command] = ARGV[0]
+end
+
+# --------------------------------------------------
+#
+# --------------------------------------------------
+if conf[:command] == 'run' 
+  runner = SQLRunner.new(conf)
+  runner.run
+else
+  puts opts
+  exit
+end

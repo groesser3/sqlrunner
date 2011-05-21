@@ -1,0 +1,2 @@
+== Version 0.0.1 - 2011-02-28 <goesser3@gmail.com>
+* initial release
