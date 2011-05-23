@@ -7,19 +7,19 @@ require 'notes_mailer'
 class SQLRunner
   def initialize(conf)
     # --------------------------------------------------------------------------------------
-    # DB-settings 
+    # DB-settings
     # --------------------------------------------------------------------------------------
     @db_id = conf[:db_name]
     @db_user = conf[:db_user]
     @db_password = conf[:db_password]
-    
+
     # --------------------------------------------------------------------------------------
-    # SQL-settings 
-    # --------------------------------------------------------------------------------------    
+    # SQL-settings
+    # --------------------------------------------------------------------------------------
     @path_to_sql_files = conf[:path_to_sql_files]
 
     # --------------------------------------------------------------------------------------
-    # Mailsettings 
+    # Mailsettings
     # --------------------------------------------------------------------------------------
     @notes_server = conf[:notes_server]
     @notes_db = conf[:notes_db]
@@ -34,22 +34,26 @@ class SQLRunner
     @dry_run = conf[:dry_run]
     @mock_win32ole = conf[:mock_win32ole]
     @verbose = conf[:verbose]
-  
+
   end
-  
+
   def run
     error_text = execute_sql
-    send_mail({:to     => @mail_to,
-                    :body => error_text,  
-                    :db    => @notes_db, 
-                    :adress => @notes_server,
-                    :user_name      =>@notes_user,
-                    :password        =>@notes_password,
-                    :mock_win32ole => @mock_win32ole,
-                    :logger => @verbose,
-                    :debug => @verbose})
+    if @mail_to
+      send_mail({:to     => @mail_to,
+                      :body => error_text,
+                      :db    => @notes_db,
+                      :adress => @notes_server,
+                      :user_name      =>@notes_user,
+                      :password        =>@notes_password,
+                      :mock_win32ole => @mock_win32ole,
+                      :logger => @verbose,
+                      :debug => @verbose})
+    else
+      puts error_text
+    end
   end
-   
+
   def execute_sql
     # --------------------------------------------------------------------------------------
     # Execute SQL statements
@@ -64,15 +68,19 @@ class SQLRunner
           File.open(file) do |f|
           sql = f.readlines.join("\n").to_s
           if @dry_run
-             error_text << "File: #{file}\n" 
+             error_text << "File: #{file}\n"
              print '.'
           else
             begin
-              sth = dbh.execute(sql) 
+              sth = dbh.execute(sql)
               header = sth.column_names
-              rows = sth.fetch_all
+              rows = []
+              while (row = sth.fetch)
+                rows << row.to_a
+              end
+              sth.finish
               if rows.size > 0
-                error_text << "\nFile: #{file} (Anzahl Datensaetze: #{rows.size.to_s}).\n"  
+                error_text << "\nFile: #{file} (Anzahl Datensaetze: #{rows.size.to_s}).\n"
                 DBI::Utils::TableFormatter.ascii(header,rows, :left, :left, 2,1, nil, error_text)
                 print 'E'
               else
@@ -81,14 +89,14 @@ class SQLRunner
               dbh.rollback()
             end
           end
-         end 
+         end
         rescue => detail
           print 'F'
           error_text << "File: #{file} \n"
           error_text << detail.backtrace.join("\n")
         end
-      end 
-    end 
+      end
+    end
     error_text
   end
 
@@ -104,7 +112,7 @@ class SQLRunner
     # Mail Versand
     # --------------------------------------------------------------------------------------
     Mail.deliver do
-      to opts[:to] 
+      to opts[:to]
       from 'SQLRunner (c) 2011 Elias Kugler'
       subject (opts[:subject] || 'Fehler bei Pruefselects')
       body "Bitte beachten: \n"+opts[:body]
